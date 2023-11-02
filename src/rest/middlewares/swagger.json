@@ -1,0 +1,1016 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Chat Service",
+    "version": "0.0.1",
+    "description": "This service has 2 types of API - REST APIs and SocketIO events.\n\nWith REST API one can query his chat rooms, get messages of a room, upload file, send message to a room or to someone particular.\n\nWith SocketIO API one can subscribe to the messages of a room, send messages to a room, communicate with admins (for support or help).\n\nTo receive message from a room there is only one way, one must subscribe to a room. But to send message one can use either REST or SocketIO message event.\n\nTo connect to socketio server, use path value to `/chat/socket.io`. For detail check - [https://socket.io/docs/v4/client-options/#path](https://socket.io/docs/v4/client-options/#path).\n\nTo authenticate SocketIO connect, you can either send `Authorization` header with `Bearer <JWT>` value or send the access token in handshake as described at [https://socket.io/docs/v4/client-options/#auth](https://socket.io/docs/v4/client-options/#auth)."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3333",
+      "description": "Development"
+    },
+    {
+      "url": "https://foodi-nlb.foodibd.com:5001/chat",
+      "description": "Staging 1"
+    },
+    {
+      "url": "http://18.139.92.172:5001/chat",
+      "description": "Staging 2"
+    }
+  ],
+  "tags": [
+    {
+      "name": "REST API",
+      "description": "REST APIs"
+    },
+    {
+      "name": "SocketIO API",
+      "description": "These are here only for documentation purpose. Here the paths are event names, request body is the message/payload structure and there is no response body as events don't have any. For OpenAPI spec purpose event names are started with a `/` here, you have to remove the starting `/`."
+    }
+  ],
+  "paths": {
+    "/create-room": {
+      "post": {
+        "tags": ["REST API"],
+        "summary": "Create a chat room",
+        "description": "Creates a chat room for the logged-in user and the `recipientId`. Both of the participants can send/receive messages to/from this room. After successful creation of the room, both participants will be subscribed to this room automatically (if they are online will start receiving  messages of this room in socketio channel).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recipientId": {
+                    "type": "number",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateRoomResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rooms": {
+      "get": {
+        "tags": ["REST API"],
+        "summary": "Get rooms of the logged in user",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/messages/{roomId}": {
+      "get": {
+        "tags": ["REST API"],
+        "summary": "Get messages of a room of a user",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "b3b1317f-7404-44db-8ac8-c885649017ad"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Room not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/online-users": {
+      "get": {
+        "tags": ["REST API"],
+        "summary": "Get the list of online users",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlineUsersResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/upload": {
+      "post": {
+        "tags": ["REST API"],
+        "summary": "Upload one or more files",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "File not supported"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/uploads": {
+      "get": {
+        "tags": ["REST API"],
+        "summary": "Get uploaded file urls of the logged-in user",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/uploads/{uploadId}": {
+      "delete": {
+        "tags": ["REST API"],
+        "summary": "Delete an uploaded file",
+        "parameters": [
+          {
+            "name": "uploadId",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "example": "b3b1317f-7404-44db-8ac8-c885649017ad"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invalid operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Upload not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/send-message": {
+      "post": {
+        "tags": ["REST API"],
+        "summary": "Send message to someone particular or some room",
+        "description": "One can use this API to send message to a user or a room. If  request body contains `roomId` property then it will try to send the message to that room, if room not found will fail. If `roomId` is not provided, `recipientId` must be provided. In that case the message will be sent to the specific room where the sender ( logged-in user) and the recipient both are present and are the only participants.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/message-to-admins": {
+      "post": {
+        "tags": ["REST API"],
+        "summary": "Send message to admins in general",
+        "description": "This is for help center type chatboxes, user will send messages to admins room (implicitly), admins will get the notification and reply when convenient.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageToAdminsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageToAdminsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/subscribe": {
+      "put": {
+        "tags": ["SocketIO API"],
+        "summary": "Subscribe to one or more rooms (client to server)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/message": {
+      "put": {
+        "tags": ["SocketIO API"],
+        "summary": "Send message to a room (client to server)",
+        "description": "This works just like send-message REST API.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["SocketIO API"],
+        "summary": "Message from a room (server to client)",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendMessagePayload"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/subscribe-to-admins": {
+      "put": {
+        "tags": ["SocketIO API"],
+        "summary": "Subscribe to admin user's room (client to server)",
+        "description": "Only admin users are supposed to be subscribed to admin room. This is where all incoming inquiries will land. If not subscribed admin won't receive any user inquiry/ticket notification which is sent via `message-for-admins` event.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/subscribe-to-online-users": {
+      "put": {
+        "tags": ["SocketIO API"],
+        "summary": "Subscribe to online user's room (client to server)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/connected": {
+      "patch": {
+        "tags": ["SocketIO API"],
+        "summary": "Someone has become online (server to client)",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/disconnected": {
+      "patch": {
+        "tags": ["SocketIO API"],
+        "summary": "Someone disconnected from the server (server to client)",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/message-for-admins": {
+      "patch": {
+        "tags": ["SocketIO API"],
+        "summary": "Someone asked admins about something (server to client)",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageForAdminsPayload"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/reply": {
+      "put": {
+        "tags": ["SocketIO API"],
+        "summary": "Reply to some user's inquiry (client to server)",
+        "description": "This event is used by admin to reply someone's ticket or inquiry. When admin replies to a ticket, a new room will be created with the admin user and the inquiring user and a `room-created` event will be fired. Both users will receive this event. Additionally both will be subscribed implicitly to the newly created room. Further chatting can be continued with socketio `message` event.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/room-created": {
+      "patch": {
+        "tags": ["SocketIO API"],
+        "summary": "A room was created because an admin replied to someone (server to client)",
+        "description": "Both the admin user and the inquiring user will receive this event. They will also be automatically subscribed to the created room. Users can also subscribe independently through `subscribe` event. The `_id` sent in the payload is the room's id.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomCreatedPayload"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Rooms": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Room"
+        }
+      },
+      "RoomsWithoutMessages": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RoomWithoutMessages"
+        }
+      },
+      "RoomsResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/RoomsWithoutMessages"
+              }
+            }
+          }
+        ]
+      },
+      "RoomWithoutMessages": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TicketId"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": "b3b1317f-7404-44db-8ac8-c885649017ad"
+              },
+              "participantIds": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "example": [1, 2]
+              },
+              "isActive": {
+                "type": "boolean"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "RoomMessages": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          }
+        }
+      },
+      "Room": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/RoomWithoutMessages"
+          },
+          {
+            "$ref": "#/components/schemas/RoomMessages"
+          }
+        ]
+      },
+      "MessageContent": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Hi, There!"
+          },
+          "fileUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["/chat-service/image1.jpg"]
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MessageContent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "senderId": {
+                "type": "integer",
+                "example": 1
+              }
+            }
+          }
+        ]
+      },
+      "Messages": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Message"
+        }
+      },
+      "MessagesResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/Messages"
+              }
+            }
+          }
+        ]
+      },
+      "MessageToAdminsRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MessageContent"
+          }
+        ]
+      },
+      "TicketId": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "type": "string",
+            "example": "202303-u1"
+          }
+        }
+      },
+      "MessageToAdminsResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/MessageContent"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TicketId"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "Upload": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "b3b1317f-7404-44db-8ac8-c885649017ad"
+          },
+          "fileUrl": {
+            "type": "string",
+            "example": "/chat-service/image1.jpg"
+          },
+          "userId": {
+            "type": "integer",
+            "example": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Uploads": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Upload"
+        }
+      },
+      "UploadsResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/Uploads"
+              }
+            }
+          }
+        ]
+      },
+      "UploadResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        ]
+      },
+      "SendMessageRequest": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MessageContent"
+          },
+          {
+            "$ref": "#/components/schemas/RoomId"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipientId": {
+                "type": "number",
+                "example": 1
+              }
+            }
+          }
+        ]
+      },
+      "RoomId": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "example": "b3b1317f-7404-44db-8ac8-c885649017ad"
+          }
+        }
+      },
+      "SendMessageResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Message"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RoomId"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SendMessagePayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Message"
+          },
+          {
+            "$ref": "#/components/schemas/RoomId"
+          }
+        ]
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Success"
+          }
+        }
+      },
+      "CreateRoomResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/Room"
+              }
+            }
+          }
+        ]
+      },
+      "SubscribePayload": {
+        "type": "object",
+        "properties": {
+          "roomIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "b3b1317f-7404-44db-8ac8-c885649017ad",
+              "b4027f40-abf8-4919-b77e-0bb18f6fac4e"
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          }
+        }
+      },
+      "OnlineUsersResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "example": [1, 2, 3]
+              }
+            }
+          }
+        ]
+      },
+      "MessageForAdminsPayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MessageContent"
+          },
+          {
+            "$ref": "#/components/schemas/TicketId"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        ]
+      },
+      "ReplyPayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TicketId"
+          },
+          {
+            "$ref": "#/components/schemas/MessageContent"
+          }
+        ]
+      },
+      "RoomCreatedPayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TicketId"
+          },
+          {
+            "$ref": "#/components/schemas/Room"
+          }
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
